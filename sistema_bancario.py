@@ -11,7 +11,7 @@ class Caixa():
         self.LIMITE_SAQUE_VALOR = 500.0
         self.LIMITE_SAQUE_DIARIO = 3
         self.menu = 1
-        self.usuarios = {'25':123, '13':31}
+        self.usuarios = []
         self.contas = {'0001':25, '0002': 13}
         self.saldo = 0.0
         self.n_saque = 0
@@ -45,46 +45,59 @@ def menu1():
 
 # Criar Usuário
 def criar_usuario(usuarios):
-    while True:
-        limpar()
-        print('===== Novo Usuário =====')
-        print('Bem vindo ao Banco Heisu.')
-        
-        cpf = input('Digite seu CPF => ')
-        if cpf.isnumeric():
-            # Confere se usuário já é cadastrado
-            usuario = None
-            user = filtrar_usuario(cpf, usuarios)
-            while user is False:
-                senha = input('Digite sua senha => ')
-                if senha.isnumeric():
-                    usuario = {str(cpf): senha}
-                    user = True
-                    print('Usuário criado com sucesso!')
-                else:
-                    print('Use apenas números inteiros.\nTente novamente. ')
-                    timer(2)
-                    continue
-                # END if
-            # END while
-            timer()
-            break
-        else:
-            print('Use apenas números inteiros.\nTente novamente. ')
-            timer(2)
-            continue
-        # END if
+    limpar()
+    print('===== Novo Usuário =====')
+    print('Bem vindo ao Banco Heisu.')
+    
+    cpf = input('Digite seu CPF => ')
+    if cpf.isnumeric():
+        # Confere se usuário já é cadastrado
+        usuario = filtrar_usuario(cpf, usuarios)
+        if usuario:
+            print(f'Usuário {usuario} já existente')
+            return
 
-    return usuario
+        nome = input('Informe seu nome completo: ')
+        data_nascimento = input('Informe sua data de nascimento (dd--mm--aaaa): ')
+        print('Informe seu endereço')
+        endereco = input('Logradouro: ')
+        endereco += ', '
+        endereco += input('No:')
+        endereco += ' - '
+        endereco += input('Bairro: ')
+        endereco += ', '
+        endereco += input('Cidade: ')
+        endereco += '/'
+        endereco += input('Sigla Estado: ')
+
+        usuarios.append({'Nome': nome, 'CPF': cpf})
+        '''
+        while user is False:
+            senha = input('Digite sua senha => ')
+            if senha.isnumeric():
+                usuario = {str(cpf): senha}
+                user = True
+                print('Usuário criado com sucesso!')
+            else:
+                print('Use apenas números inteiros.\nTente novamente. ')
+                timer(2)
+                continue
+            # END if
+        # END while
+        timer()
+        break
+    else:
+        print('Use apenas números inteiros.\nTente novamente. ')
+        timer(2)
+        continue
+    # END if
+    '''
 
 
 # Filtrar Usuário
 def filtrar_usuario(cpf, usuarios):
-    if usuarios.get(str(cpf)):
-        print(f'Usuário {cpf} já existe.')
-        return True
-    else:
-        return False
+    usuarios_filtrados = [usuario for usuario in usuarios if usuario['CPF'] == cpf]
+    return usuarios_filtrados[0] if usuarios_filtrados else None
     
 
 # Criar Conta
@@ -163,38 +176,9 @@ def saque(*, n_saque, saldo, LIMITE_SAQUE_DIARIO, LIMITE_SAQUE_VALOR):
         # END if
     # END While
 
-    '''print('Saque')
-    if n_saque == limite_saques:
-        print(f'Limite de 3 saques diários atingido!')
-        wait = input('Pressione ENTER para retornar ao menu principal...')
-    
-    print(f'Valor disponível: R${banco.saldo:.2f}')
-    saque = int(input('Digite o valor do saque: R$'))
-    if saque > banco.LIMITE_SAQUE_VALOR:
-        print(f'Valor acima do permitido para saque! Limite máximo: R${banco.LIMITE_SAQUE_VALOR:.2f}')
-    elif saque <= 0:
-        print('Valor inválido!')
-    elif saque > banco.saldo:
-        print('Saldo insuficiente!')
-    else:
-        limpar()
-        saldo -= saque            # Atualiza o saldo
-        n_saque += 1              # Atualiza o número de saques diários
-        n_transacoes_diarias += 1 # Atualiza o número de transações diárias
-        # Atualiza o extrato
-        Extrato['Saldo do dia'] = banco.saldo
-        # Atualiza Transações
-        timestamp = datetime.now(pytz.timezone('America/Sao_Paulo'))
-        saque_id = str(timestamp.strftime('%d/%m/%Y - %H:%M:%S')) + ' -    SAQUE'
-        banco.transacoes.update({saque_id: saque})
-        print(f'Saldo atual: R${banco.saldo:.2f}')
-        # Exibe mensagem de sucesso
-        print(f'Saque de R${saque:.2f} realizado com sucesso!')
-#   return saldo, extrato'''
-
 
 # Exibir Extrato
-def extrato(Extrato, transacoes):
+def extrato(transacoes, /, *, Extrato):
     limpar()
     print('=================== Extrato ==================')
     print('==============================================')
@@ -237,10 +221,7 @@ def main():
 
             if opcao1 == 'u':
                 # Criar Novo Usuário
-                usuario = criar_usuario(banco.usuarios)
-                if usuario is not None:
-                    banco.usuarios.update(usuario)
-                    print(banco.usuarios)
+                criar_usuario(banco.usuarios)
 
             elif opcao1 == 'q':
                 print('Saindo', end='')
@@ -249,9 +230,10 @@ def main():
 
             elif opcao1.isnumeric():
                 limpar()
-                usuario = banco.usuarios.get(str(opcao1))
-                autorizado = autenticacao(usuario)
-                print(f'Usuário {opcao1} autorizado. ')
+                usuario = filtrar_usuario(cpf=opcao1, usuarios=banco.usuarios)
+                # autorizado = autenticacao(usuario)
+                autorizado = True
+                print(f'Usuário {usuario} autorizado. ')
                 timer(2)
 
                 if autorizado is False:
@@ -316,7 +298,7 @@ def main():
                     limpar()
 
                 elif opcao2 == 'e':
-                    extrato(banco.Extrato, banco.transacoes)
+                    extrato(banco.transacoes, Extrato=banco.Extrato)
                                      
                     input('Pressione ENTER para retornar ao menu principal...')
                     limpar()
