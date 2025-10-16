@@ -11,8 +11,8 @@ class Caixa():
         self.LIMITE_SAQUE_VALOR = 500.0
         self.LIMITE_SAQUE_DIARIO = 3
         self.menu = 1
-        self.usuarios = {'252525':1234, '424242':1123}
-        self.contas = {'0001':252525, '0002': 424242}
+        self.usuarios = {'25':123, '13':31}
+        self.contas = {'0001':25, '0002': 13}
         self.saldo = 0.0
         self.n_saque = 0
         self.n_transacoes_diarias = 0
@@ -122,16 +122,15 @@ def menu2():
     return input(textwrap.dedent(menu))
 
 
-
 # Deposito
-def deposito(saldo, valor, extrato, /):
+def deposito(saldo, /):
+    print('====== Depósito ======')
+    print(f'Saldo atual: R${saldo:.2f}')
+    valor = float(input('Digite o valor do deposito: R$'))
     while True:
-        if valor > 0:
+        if valor >= 0:
             limpar()
-            saldo += valor         # Atualiza o saldo
-            # Atualiza o extrato
-            extrato['Saldo do dia'] = saldo
-            return saldo, extrato
+            return valor
         else:
             print('Valor inválido!')
             valor = float(input('Digite o valor do deposito: R$'))
@@ -140,7 +139,30 @@ def deposito(saldo, valor, extrato, /):
 
 
 # Saque
-def saque(*, saldo, valor, extrato, limite, n_saque, limite_saques):
+def saque(*, n_saque, saldo, LIMITE_SAQUE_DIARIO, LIMITE_SAQUE_VALOR):
+    print('======= Saque =======')
+    print(f'Saldo atual: R${saldo:.2f}')
+    
+    if n_saque == LIMITE_SAQUE_DIARIO:
+            print(f'Limite de 3 saques diários atingido!')
+            input('Pressione ENTER para retornar ao menu principal...')
+            return 0
+
+    while True:
+        valor = float(input('Digite o valor do saque: R$'))
+
+        if valor > LIMITE_SAQUE_VALOR:
+            print(f'Valor acima do permitido para saque! Limite máximo: R${LIMITE_SAQUE_VALOR:.2f}')
+        elif valor > saldo:
+            print('Saldo insuficiente!')
+        elif valor < 0:
+            print('Valor inválido!')
+        else:
+            limpar()
+            return valor
+        # END if
+    # END While
+
     '''print('Saque')
     if n_saque == limite_saques:
         print(f'Limite de 3 saques diários atingido!')
@@ -171,9 +193,29 @@ def saque(*, saldo, valor, extrato, limite, n_saque, limite_saques):
 #   return saldo, extrato'''
 
 
-# Extrato
-def extrato():
+# Exibir Extrato
+def extrato(Extrato, transacoes):
+    limpar()
+    print('=================== Extrato ==================')
+    print('==============================================')
+    print(f'Saldo Anterior:                   R${Extrato["Saldo Anterior"]:>9.2f}')
+    for key, value in transacoes.items():
+        print(f'{key:<12}: R${value:>9.2f}')
+    print(f'Saldo do dia {str(datetime.today().date())}:          R${Extrato["Saldo do dia"]:>9.2f}')
+    print('==============================================')
     return
+
+
+#  Atualizar Extrato
+def atualiza(opcao2, valor):
+    timestamp = datetime.now(pytz.timezone('America/Sao_Paulo'))
+    if opcao2 == 'd':
+        deposito_id = str(timestamp.strftime('%d/%m/%Y - %H:%M:%S')) + ' - DEPOSITO'
+        transacao = {deposito_id: valor}
+    elif opcao2 == 's':
+        saque_id = str(timestamp.strftime('%d/%m/%Y - %H:%M:%S')) + ' -    SAQUE'
+        transacao = {saque_id: valor}
+    return transacao
 
 
 # Função Principal
@@ -182,6 +224,7 @@ def main():
     banco = Caixa()
     
     while True:
+        # MENU 01 - Criação e Autenticação de Usuários
         while banco.menu == 1:
             limpar()
             """
@@ -208,7 +251,6 @@ def main():
                 limpar()
                 usuario = banco.usuarios.get(str(opcao1))
                 autorizado = autenticacao(usuario)
-                print(autorizado)
                 print(f'Usuário {opcao1} autorizado. ')
                 timer(2)
 
@@ -224,8 +266,9 @@ def main():
                     print('Opção inválida!\nTente novamente. ')
                     timer(2)
             # END if
-
         # END While
+
+        # MENU 02 - Transições Bancárias
         while banco.menu == 2:
             opcao2 = menu2()
 
@@ -236,21 +279,46 @@ def main():
                 break
             else:
                 if opcao2 == 'd':
+                    valor = deposito(banco.saldo)
+                    if valor != 0:
+                        banco.saldo += valor
+                        banco.Extrato['Saldo do dia'] = banco.saldo
+                        transacao = atualiza(opcao2, valor)
+                        banco.n_transacoes_diarias += 1 # Atualiza o número de transações diárias
+                        banco.transacoes.update(transacao)
+                        print(f'Depósito de R${valor:.2f} realizado com sucesso!')
+                        print(f'Saldo atual: R${banco.saldo:.2f}')
+                    else:
+                        print('Valor de depósito nulo.')
+                    # END if                    
+                    input('Pressione ENTER para retornar ao menu principal...')
                     limpar()
-                    print('Deposito')
-                    print(f'Valor disponível: R${banco.saldo:.2f}')
-                    valor = float(input('Digite o valor do deposito: R$'))
 
-                    banco.saldo, banco.extrato = deposito(banco.saldo, valor, banco.Extrato)
+                elif opcao2 == 's':
+                    valor = saque(n_saque=banco.n_saque, 
+                                  saldo=banco.saldo, 
+                                  LIMITE_SAQUE_DIARIO=banco.LIMITE_SAQUE_DIARIO, 
+                                  LIMITE_SAQUE_VALOR=banco.LIMITE_SAQUE_VALOR)                    
+                    if valor != 0:
+                        banco.saldo -= valor
+                        banco.Extrato['Saldo do dia'] = banco.saldo
+                        banco.n_saque += 1              # Atualiza o número de saques diários
+                        transacao = atualiza(opcao2, valor)
+                        banco.n_transacoes_diarias += 1 # Atualiza o número de transações diárias
+                        banco.transacoes.update(transacao)
+                        print(f'Saque de R${valor:.2f} realizado com sucesso!')
+                        print(f'Saldo atual: R${banco.saldo:.2f}')
+                        input('Pressione ENTER para retornar ao menu principal...')
+                    else:
+                        print('Valor de saque nulo.')
+                    # END if                    
                     
-                    banco.n_transacoes_diarias += 1 # Atualiza o número de transações diárias
-                    timestamp = datetime.now(pytz.timezone('America/Sao_Paulo'))
-                    deposito_id = str(timestamp.strftime('%d/%m/%Y - %H:%M:%S')) + ' - DEPOSITO'
-                    banco.transacoes.update({deposito_id: deposito})
-                    print(f'Saldo atual: R${banco.saldo:.2f}')
-                    # Exibe mensagem de sucesso
-                    print(f'Depósito de R${deposito:.2f} realizado com sucesso!')
-                    wait = input('Pressione ENTER para retornar ao menu principal...')
+                    limpar()
+
+                elif opcao2 == 'e':
+                    extrato(banco.Extrato, banco.transacoes)
+                                     
+                    input('Pressione ENTER para retornar ao menu principal...')
                     limpar()
 
                 elif opcao2 == 'q':
@@ -260,85 +328,6 @@ def main():
                 else:
                     print('Opção inválida!')
 
-
-"""
-            # Verifica a opção escolhida
-            if opcao == 's':
-                limpar()
-                # Chamar função saque
-                print('Saque')
-                if banco.n_saque == banco.LIMITE_SAQUE_DIARIO:
-                    print(f'Limite de 3 saques diários atingido!')
-                    wait = input('Pressione ENTER para retornar ao menu principal...')
-                    continue
-                
-                print(f'Valor disponível: R${banco.saldo:.2f}')
-                saque = int(input('Digite o valor do saque: R$'))
-                if saque > banco.LIMITE_SAQUE_VALOR:
-                    print(f'Valor acima do permitido para saque! Limite máximo: R${banco.LIMITE_SAQUE_VALOR:.2f}')
-                elif saque <= 0:
-                    print('Valor inválido!')
-                elif saque > banco.saldo:
-                    print('Saldo insuficiente!')
-                else:
-                    limpar()
-                    banco.saldo -= saque            # Atualiza o saldo
-                    banco.n_saque += 1              # Atualiza o número de saques diários
-                    banco.n_transacoes_diarias += 1 # Atualiza o número de transações diárias
-                    # Atualiza o extrato
-                    banco.Extrato['Saldo do dia'] = banco.saldo
-                    # Atualiza Transações
-                    timestamp = datetime.now(pytz.timezone('America/Sao_Paulo'))
-                    saque_id = str(timestamp.strftime('%d/%m/%Y - %H:%M:%S')) + ' -    SAQUE'
-                    banco.transacoes.update({saque_id: saque})
-                    print(f'Saldo atual: R${banco.saldo:.2f}')
-                    # Exibe mensagem de sucesso
-                    print(f'Saque de R${saque:.2f} realizado com sucesso!')
-                wait = input('Pressione ENTER para retornar ao menu principal...')
-
-            elif opcao == 'e':
-                limpar()
-                banco.n_transacoes_diarias += 1 # Atualiza o número de transações diárias
-                print('Extrato')
-                print('==============================================')
-                print(f'Saldo Anterior:                   R${banco.Extrato["Saldo Anterior"]:>9.2f}')
-                for key, value in banco.transacoes.items():
-                    print(f'{key:<12}: R${value:>9.2f}')
-                print(f'Saldo do dia {str(datetime.today().date())}:          R${banco.Extrato["Saldo do dia"]:>9.2f}')
-                print('==============================================')
-                wait = input('Pressione ENTER para retornar ao menu principal...')
-            
-            elif opcao == 'd':
-                limpar()
-                print('Deposito')
-                print(f'Valor disponível: R${banco.saldo:.2f}')
-                deposito = int(input('Digite o valor do deposito: R$'))
-                if deposito <= 0:
-                    print('Valor inválido!')
-                else:
-                    limpar()
-                    banco.saldo += deposito         # Atualiza o saldo
-                    banco.n_transacoes_diarias += 1 # Atualiza o número de transações diárias
-                    # Atualiza o extrato
-                    banco.Extrato['Saldo do dia'] = banco.saldo
-                    # Atualiza Transações
-                    timestamp = datetime.now(pytz.timezone('America/Sao_Paulo'))
-                    deposito_id = str(timestamp.strftime('%d/%m/%Y - %H:%M:%S')) + ' - DEPOSITO'
-                    banco.transacoes.update({deposito_id: deposito})
-                    print(f'Saldo atual: R${banco.saldo:.2f}')
-                    # Exibe mensagem de sucesso
-                    print(f'Depósito de R${deposito:.2f} realizado com sucesso!')
-                    wait = input('Pressione ENTER para retornar ao menu principal...')
-                    limpar()
-                # END if
-
-            elif opcao == 'q':
-                print('Saindo...')
-                sys.exit(2)
-            else:
-                print('Opção inválida!')
-# END main
-"""
 
 #######################
 ##### INICIO AQUI #####
