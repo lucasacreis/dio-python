@@ -10,9 +10,11 @@ class Caixa():
         self.LIMITE_TRANSACOES = 10
         self.LIMITE_SAQUE_VALOR = 500.0
         self.LIMITE_SAQUE_DIARIO = 3
+        self.agencia = '0001'
         self.menu = 1
         self.usuarios = []
-        self.contas = {'0001':25, '0002': 13}
+        self.contas = []
+        self.numero_contas = len(self.contas)
         self.saldo = 0.0
         self.n_saque = 0
         self.n_transacoes_diarias = 0
@@ -38,10 +40,12 @@ def menu1():
     menu = """
     ========== MENU ==========
     [u]\t Criar Usuário
+    [c]\t Criar Conta
     [q]\t Sair
 
-    Entrar com CPF => """
+    Ou entrar com CPF => """
     return input(textwrap.dedent(menu))
+
 
 # Criar Usuário
 def criar_usuario(usuarios):
@@ -58,59 +62,92 @@ def criar_usuario(usuarios):
             return
 
         nome = input('Informe seu nome completo: ')
-        data_nascimento = input('Informe sua data de nascimento (dd--mm--aaaa): ')
-        print('Informe seu endereço')
-        endereco = input('Logradouro: ')
+        limpar()
+        # data_nascimento = input('Informe sua data de nascimento (dd--mm--aaaa): ')
+        limpar()
+        print('Informe seu endereço:')
+        endereco = input('- Logradouro: ')
         endereco += ', '
-        endereco += input('No:')
+        endereco += input('- No:')
         endereco += ' - '
-        endereco += input('Bairro: ')
+        endereco += input('- Bairro: ')
         endereco += ', '
-        endereco += input('Cidade: ')
+        endereco += input('- Cidade: ')
         endereco += '/'
-        endereco += input('Sigla Estado: ')
+        endereco += input('- Sigla Estado: ')
 
-        usuarios.append({'Nome': nome, 'CPF': cpf})
-        '''
+        limpar()
+        print(f'Bem vindo(a) {nome}.')
+        user = False
+
         while user is False:
             senha = input('Digite sua senha => ')
             if senha.isnumeric():
                 usuario = {str(cpf): senha}
                 user = True
-                print('Usuário criado com sucesso!')
+                print('Senha criada com sucesso!')
             else:
                 print('Use apenas números inteiros.\nTente novamente. ')
                 timer(2)
                 continue
             # END if
         # END while
-        timer()
-        break
-    else:
-        print('Use apenas números inteiros.\nTente novamente. ')
-        timer(2)
-        continue
-    # END if
-    '''
+        
+        return {'nome': nome, 'cpf': int(cpf), 'endereco': endereco, 'senha': senha}
 
 
 # Filtrar Usuário
 def filtrar_usuario(cpf, usuarios):
-    usuarios_filtrados = [usuario for usuario in usuarios if usuario['CPF'] == cpf]
+    usuarios_filtrados = [usuario for usuario in usuarios if usuario['cpf'] == int(cpf)]
     return usuarios_filtrados[0] if usuarios_filtrados else None
     
 
 # Criar Conta
-def criar_conta():
-    return
+def criar_conta(agencia, numero_conta, usuarios):
+    limpar()
+    numero_conta += 1
+    usuario = False
+    while usuario is False:
+        try:
+            cpf = int(input('Digite seu CPF => '))
+            # Confere se usuário já é cadastrado
+            usuario = filtrar_usuario(cpf, usuarios)
+            if usuario:
+                print(f'Olá {usuario['nome']}, \nsua conta {numero_conta} foi criada com sucesso na agencia {agencia}')
+                user = {'agencia': agencia, 'numero_conta': numero_conta, 'usuario': usuario}
+                timer()
+            else:
+                print(f'Usuário {cpf} - {type(cpf)} - Não encontrado.')
+                user = None
+                timer()
+        except Exception:
+            continue
+        
+    return user
 
+
+# Listar Contas
+def listar_contas(contas):
+    limpar()
+    for conta in contas:
+        linha = f"""\
+            Agência:\t{conta['agencia']}
+            C/C:\t\t{conta['numero_conta']}
+            Titular:\t{conta['usuario']['nome']}
+        """
+        print('='*100)
+        print(textwrap.dedent(linha))
+        
+    print('='*100, end='\n\n')
+    input('Pressione ENTER para retornar ao menu principal. ')
+    
 
 # Autenticação
 def autenticacao(usuario):
     tentativa = 1
     while tentativa <= 3:
         senha = str(input("Digite sua senha => "))
-        if senha != str(usuario):
+        if senha != str(usuario['senha']):
             tentativa += 1
             print('\nSenha incorreta.')
         else:
@@ -129,7 +166,7 @@ def menu2():
     [s]\t Saque
     [e]\t Extrato
     [d]\t Deposito
-    [c]\t Criar Conta
+    [lc]\t Listar Contas
     [q]\t Sair
     => """
     return input(textwrap.dedent(menu))
@@ -158,7 +195,7 @@ def saque(*, n_saque, saldo, LIMITE_SAQUE_DIARIO, LIMITE_SAQUE_VALOR):
     
     if n_saque == LIMITE_SAQUE_DIARIO:
             print(f'Limite de 3 saques diários atingido!')
-            input('Pressione ENTER para retornar ao menu principal...')
+            input('Pressione ENTER para retornar ao menu principal. ')
             return 0
 
     while True:
@@ -214,14 +251,26 @@ def main():
             """
             Chamada do Menu 1:
             [u]\t Criar Usuário
+            [c]\t Criar Conta
             [q]\t Sair
-            Entrar com CPF =>
+            Ou entrar com CPF =>
             """
             opcao1 = menu1()
 
             if opcao1 == 'u':
                 # Criar Novo Usuário
-                criar_usuario(banco.usuarios)
+                banco.usuarios.append(criar_usuario(banco.usuarios))
+                timer()
+
+            elif opcao1 == 'c':
+                # Criar Nova Conta
+                
+                conta = criar_conta(agencia=banco.agencia, numero_conta=banco.numero_contas, usuarios=banco.usuarios)
+                if conta:
+                    banco.contas.append(conta)
+                    banco.numero_contas += 1
+                else:
+                    print('Não foi possível criar uma conta.')
 
             elif opcao1 == 'q':
                 print('Saindo', end='')
@@ -231,9 +280,9 @@ def main():
             elif opcao1.isnumeric():
                 limpar()
                 usuario = filtrar_usuario(cpf=opcao1, usuarios=banco.usuarios)
-                # autorizado = autenticacao(usuario)
+                autorizado = autenticacao(usuario)
                 autorizado = True
-                print(f'Usuário {usuario} autorizado. ')
+                print(f'Usuário {usuario['nome']} autorizado. ')
                 timer(2)
 
                 if autorizado is False:
@@ -252,13 +301,16 @@ def main():
 
         # MENU 02 - Transições Bancárias
         while banco.menu == 2:
+            limpar()
+            
             opcao2 = menu2()
 
             # Caso número de transações diárias passar do limite estipulado
             if banco.n_transacoes_diarias == banco.LIMITE_TRANSACOES:
                 print('Você atingiu seu limite diário de 10 transações.')
                 print('Encerrando.')
-                break
+                timer()
+                sys.exit(2)
             else:
                 if opcao2 == 'd':
                     valor = deposito(banco.saldo)
@@ -273,7 +325,7 @@ def main():
                     else:
                         print('Valor de depósito nulo.')
                     # END if                    
-                    input('Pressione ENTER para retornar ao menu principal...')
+                    input('Pressione ENTER para retornar ao menu principal. ')
                     limpar()
 
                 elif opcao2 == 's':
@@ -290,7 +342,7 @@ def main():
                         banco.transacoes.update(transacao)
                         print(f'Saque de R${valor:.2f} realizado com sucesso!')
                         print(f'Saldo atual: R${banco.saldo:.2f}')
-                        input('Pressione ENTER para retornar ao menu principal...')
+                        input('Pressione ENTER para retornar ao menu principal. ')
                     else:
                         print('Valor de saque nulo.')
                     # END if                    
@@ -300,8 +352,11 @@ def main():
                 elif opcao2 == 'e':
                     extrato(banco.transacoes, Extrato=banco.Extrato)
                                      
-                    input('Pressione ENTER para retornar ao menu principal...')
+                    input('Pressione ENTER para retornar ao menu principal. ')
                     limpar()
+
+                elif opcao2 == 'lc':
+                    listar_contas(banco.contas)
 
                 elif opcao2 == 'q':
                     print('Saindo', end='')
